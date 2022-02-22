@@ -8,7 +8,6 @@ import com.intellij.psi.PsiDocumentManager
 import org.jetbrains.kotlin.idea.util.application.executeWriteCommand
 import org.jetbrains.kotlin.psi.KtFile
 import com.alexbur.synthetic_plugin.delegates.ConvertKtFileDelegate
-import com.alexbur.synthetic_plugin.extensions.androidFacet
 
 class ConvertSyntheticToViewBindingAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
@@ -18,9 +17,8 @@ class ConvertSyntheticToViewBindingAction : AnAction() {
         PsiDocumentManager.getInstance(project).commitAllDocuments()
 
         project.executeWriteCommand(COMMAND_NAME) {
-            ConvertKtFileDelegate.perform(file, project, e.androidFacet())
+            ConvertKtFileDelegate.perform(file, project)
         }
-        //Messages.showMessageDialog("message", "title", null)
     }
 
     private companion object {

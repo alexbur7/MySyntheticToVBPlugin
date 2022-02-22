@@ -1,8 +1,6 @@
 package com.alexbur.synthetic_plugin.visitor
 
 import com.alexbur.synthetic_plugin.model.RootViewRef
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReference
 import org.jetbrains.kotlin.idea.references.SyntheticPropertyAccessorReferenceDescriptorImpl
 import org.jetbrains.kotlin.idea.structuralsearch.visitor.KotlinRecursiveElementVisitor
@@ -35,23 +33,5 @@ class RootViewVisitor : KotlinRecursiveElementVisitor() {
 
     private companion object {
         const val ROOT_VIEW = "rootView"
-    }
-}
-
-class DotVisitor: PsiRecursiveElementWalkingVisitor(){
-
-    private val result = mutableListOf<PsiElement>()
-    private val allElement = mutableListOf<PsiElement>()
-
-    fun getResult(): List<PsiElement> = result.toList()
-
-    override fun visitElement(element: PsiElement) {
-        super.visitElement(element)
-
-        if (element.text == "." && allElement.lastOrNull()?.text == "rootView") {
-            result.add(element)
-        }else{
-            allElement.add(element)
-        }
     }
 }

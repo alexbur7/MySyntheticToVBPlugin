@@ -1,44 +1,40 @@
 package com.alexbur.synthetic_plugin.delegates
 
 import com.intellij.openapi.project.Project
-import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import com.alexbur.synthetic_plugin.model.AndroidViewContainer
 import com.alexbur.synthetic_plugin.model.RootViewRef
 import com.alexbur.synthetic_plugin.visitor.AndroidViewXmlSyntheticsRefsVisitor
-import com.alexbur.synthetic_plugin.visitor.DotVisitor
+import com.alexbur.synthetic_plugin.visitor.DotAfterRootViewVisitor
 import com.alexbur.synthetic_plugin.visitor.RootViewVisitor
 import com.alexbur.synthetic_plugin.visitor.SyntheticsImportsVisitor
 import com.intellij.psi.PsiElement
 
 object ConvertKtFileDelegate {
 
-    /**
-     * This function should be invoked inside [com.intellij.openapi.project.Project.executeWriteCommand]
-     * because this method modify your codebase.
-     */
     fun perform(
         file: KtFile,
         project: Project,
-        androidFacet: AndroidFacet?,
         psiFactory: KtPsiFactory = KtPsiFactory(project),
     ) {
         val xmlRefsVisitor = AndroidViewXmlSyntheticsRefsVisitor()
         val importsVisitor = SyntheticsImportsVisitor()
         val rootViewVisitor = RootViewVisitor()
-        val dotVisitor = DotVisitor()
+        val dotAfterRootViewVisitor = DotAfterRootViewVisitor()
         file.accept(xmlRefsVisitor)
         file.accept(importsVisitor)
         file.accept(rootViewVisitor)
-        file.accept(dotVisitor)
+        file.accept(dotAfterRootViewVisitor)
         val xmlViewRefs = xmlRefsVisitor.getResult()
         val syntheticImports = importsVisitor.getResult()
         val rootViewRefs = rootViewVisitor.getResult()
-        val dots = dotVisitor.getResult()
+        val dots = dotAfterRootViewVisitor.getResult()
+        val parents = dotAfterRootViewVisitor.getParentResult()
 
-        ViewBindingPropertyDelegate(psiFactory, file, androidFacet).addViewBindingProperty()
+        val bindingPropertyDelegate = ViewBindingPropertyDelegate(psiFactory, file)
+        bindingPropertyDelegate.addViewBindingProperty(parents)
         replaceSynthCallsToViews(psiFactory, xmlViewRefs)
         removeKotlinxSyntheticsImports(syntheticImports)
         removeRootView(rootViewRefs)
