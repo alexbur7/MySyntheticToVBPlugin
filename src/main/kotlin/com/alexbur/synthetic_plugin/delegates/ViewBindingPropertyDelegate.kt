@@ -10,7 +10,9 @@ import org.jetbrains.kotlin.psi.getOrCreateBody
 import org.jetbrains.kotlin.resolve.ImportPath
 import com.alexbur.synthetic_plugin.utils.ClassParentsFinder
 import com.alexbur.synthetic_plugin.extensions.isKotlinSynthetic
+import com.alexbur.synthetic_plugin.utils.isNeedGeneric
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.idea.util.isMultiline
 import java.util.*
 
 class ViewBindingPropertyDelegate(
@@ -23,9 +25,10 @@ class ViewBindingPropertyDelegate(
         const val VIEW_GROUP_IMPORT = "android.view.ViewGroup"
         const val LAYOUT_INFLATER_GROUP_IMPORT = "android.view.LayoutInflater"
         const val FRAGMENT_VB_GROUP_IMPORT = "com.nlmk.mcs.presentation_layer.base.vb"
+        const val FRAGMENT_GROUP_IMPORT = "com.nlmk.mcs.presentation_layer.base"
     }
 
-    val bindingClassName = run {
+    private val bindingClassName = run {
         val synthImport = file.importDirectives.first { it.importPath?.pathStr.isKotlinSynthetic() }
         val synthImportStr = synthImport.importPath?.pathStr.orEmpty()
             .removeSuffix(".*").removeSuffix(".view")
@@ -51,14 +54,23 @@ class ViewBindingPropertyDelegate(
         }
         classes.forEach { (psiClass, ktClass) ->
             val parents = ClassParentsFinder(psiClass)
-            when {
-                parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
-                else -> println("Can't add ViewBinding property to class: ${psiClass.qualifiedName}")
+            val typeParentClass = parents.typeVb
+
+            addImports("${FRAGMENT_VB_GROUP_IMPORT}.${typeParentClass?.newName}")
+            deleteImport("$FRAGMENT_GROUP_IMPORT.${typeParentClass?.oldName}")
+
+            if (typeParentClass.isNeedGeneric()) {
+                when {
+                    parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
+                    else -> println("Can't add ViewBinding property to class: ${psiClass.qualifiedName}")
+                }
+                addImports(bindingQualifiedClassName)
+                parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${typeParentClass?.newName}<"))
+                    ?.add(psiFactory.creareDelegatedSuperTypeEntry("${bindingClassName}>"))
             }
-            addImports(bindingQualifiedClassName)
-            addImports("${FRAGMENT_VB_GROUP_IMPORT}.${parents.typeVb?.newName}")
-            parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${parents.typeVb?.newName}<"))
-                ?.add(psiFactory.creareDelegatedSuperTypeEntry("${bindingClassName}>"))
+            else{
+                parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${typeParentClass?.newName}"))
+            }
         }
     }
 
@@ -83,6 +95,20 @@ class ViewBindingPropertyDelegate(
                 val importDirective = psiFactory.createImportDirective(importPath)
                 importList.add(psiFactory.createNewLine())
                 importList.add(importDirective)
+            }
+        }
+    }
+
+    private fun deleteImport(vararg imports: String){
+        file.importList?.let { importList ->
+            imports.forEach { import ->
+                val importPath = ImportPath.fromString(import)
+                val a = importList.imports.filter {
+                    it.importPath == importPath
+                }
+                a.forEach {
+                    it.delete()
+                }
             }
         }
     }

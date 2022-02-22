@@ -31,19 +31,45 @@ class ClassParentsFinder(psiClass: PsiClass) {
     }
 
     enum class TypeVB(val oldName: String, val newName: String) {
-        BASE_VB("BaseFragment", "BaseVBFragment"),
-        COLLAPSING_VB("CollapsingTitleFragment", "CollapsingTitleVBFragment"),
-        REFRESH_VB("BaseRefreshFragment", "BaseRefreshVBFragment"),
-        LIFTABLE_VB("LiftableTitleFragment","LiftableTitleVBFragment"),
-        CENTER_TITLE_VB("CenterTitleFragment","CenterTitleVBFragment"),
-        COLLAPSING_TITLE_RECYCLER_VB("CollapsingTitleRecyclerFragment","CollapsingTitleRecyclerVBFragment"),
-        COLLAPSING_TITLE_REFRESH_RECYCLER_VB("CollapsingTitleRefreshRecyclerFragment","CollapsingTitleRefreshRecyclerVBFragment"),
-        COLLAPSING_TITLE_REFRESH_RECYCLER_WITH_BUTTON_VB("CollapsingTitleRefreshRecyclerWithButtonFragment","CollapsingTitleRefreshRecyclerWithButtonVBFragment"),
-        COLLAPSING_TITLE_VIEW_PAGER_VB("CollapsingTitleViewPagerFragment","CollapsingTitleViewPagerFragment"),
-        LARGE_TITLE_VB("LargeTitleFragment","LargeTitleFragment"),
+        BASE_VB("BaseFragment", "BaseVBFragment"), COLLAPSING_VB(
+            "CollapsingTitleFragment",
+            "CollapsingTitleVBFragment"
+        ),
+        REFRESH_VB("BaseRefreshFragment", "BaseRefreshVBFragment"), LIFTABLE_VB(
+            "LiftableTitleFragment",
+            "LiftableTitleVBFragment"
+        ),
+        CENTER_TITLE_VB(
+            "CenterTitleFragment",
+            "CenterTitleVBFragment"
+        ),
+        COLLAPSING_TITLE_RECYCLER_VB(
+            "CollapsingTitleRecyclerFragment",
+            "CollapsingTitleRecyclerVBFragment"
+        ),
+        COLLAPSING_TITLE_REFRESH_RECYCLER_VB(
+            "CollapsingTitleRefreshRecyclerFragment", "CollapsingTitleRefreshRecyclerVBFragment"
+        ),
+        COLLAPSING_TITLE_REFRESH_RECYCLER_WITH_BUTTON_VB(
+            "CollapsingTitleRefreshRecyclerWithButtonFragment", "CollapsingTitleRefreshRecyclerWithButtonVBFragment"
+        ),
+        COLLAPSING_TITLE_VIEW_PAGER_VB(
+            "CollapsingTitleViewPagerFragment",
+            "CollapsingTitleViewPagerFragment"
+        ),
+        LARGE_TITLE_VB("LargeTitleFragment", "LargeTitleFragment"),
     }
 
-    private companion object{
+    private companion object {
         const val BASE_FRAGMENT_IMPORT = "com.nlmk.mcs.presentation_layer.base."
+    }
+}
+
+fun ClassParentsFinder.TypeVB?.isNeedGeneric(): Boolean {
+    return when (this) {
+        ClassParentsFinder.TypeVB.BASE_VB, ClassParentsFinder.TypeVB.COLLAPSING_VB, ClassParentsFinder.TypeVB.REFRESH_VB,
+        ClassParentsFinder.TypeVB.CENTER_TITLE_VB, ClassParentsFinder.TypeVB.LARGE_TITLE_VB,
+        ClassParentsFinder.TypeVB.LIFTABLE_VB -> true
+        else -> false
     }
 }

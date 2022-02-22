@@ -36,7 +36,7 @@ sealed class AndroidViewContainer {
             .replaceFirstChar { it.lowercase(Locale.getDefault()) }
 
         return when (idCamelCase) {
-            "progressBar", "contentContainer", "recyclerView" -> {
+            "progressBar", "errorContainer", "contentContainer", "recyclerView" -> {
                 idCamelCase
             }
             "errorTextView" -> {
