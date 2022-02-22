@@ -1,0 +1,28 @@
+<idea-plugin>
+    <id>org.example.MySyntheticToVBPlugin</id>
+    <name>AlexBurDeleteSyntheticPlugin</name>
+    <vendor email="a.burdelev@qsift.ru">QSOFT</vendor>
+
+    <description>This plugin allows you to automatically migrate from kotlin synthetic to viewBinding</description>
+
+    <!-- please see https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>org.jetbrains.android</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+        <action id="ConvertSyntheticToViewBindingId"
+                class="com.alexbur.synthetic_plugin.ConvertSyntheticToViewBindingAction"
+                text="Convert synthetic to viewBinding"
+                description="Find all synthetic property and convert to viewBinding">
+            <add-to-group group-id="RefactoringMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
