@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>org.example.MySyntheticToVBPlugin</id>
     <name>AlexBurDeleteSyntheticPlugin</name>
-    <vendor email="a.burdelev@qsift.ru">QSOFT</vendor>
+    <vendor email="a.burdelev@qsoft.ru">QSOFT</vendor>
 
     <description>This plugin allows you to automatically migrate from kotlin synthetic to viewBinding</description>
 

@@ -1,6 +1,5 @@
 package com.alexbur.synthetic_plugin.visitor
 
-import com.alexbur.synthetic_plugin.utils.ClassParentsFinder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
@@ -11,6 +10,18 @@ class DotAfterRootViewVisitor : PsiRecursiveElementWalkingVisitor() {
     private val result = mutableListOf<PsiElement>()
     private val allElement = mutableListOf<PsiElement>()
     private var position = 0
+    private val parentNames = listOf(
+        "BaseFragment",
+        "CollapsingTitleFragment",
+        "BaseRefreshFragment",
+        "CenterTitleFragment",
+        "LargeTitleFragment",
+        "LiftableTitleFragment",
+        "CollapsingTitleRecyclerFragment",
+        "CollapsingTitleRefreshRecyclerFragment",
+        "CollapsingTitleRefreshRecyclerWithButtonFragment",
+        "CollapsingTitleViewPagerFragment"
+    )
 
     fun getResult(): List<PsiElement> = result.toList()
     fun getParentResult(): PsiElement? = parentResult.lastOrNull()
@@ -20,8 +31,8 @@ class DotAfterRootViewVisitor : PsiRecursiveElementWalkingVisitor() {
 
         if (element.text == "." && allElement.lastOrNull()?.text == "rootView") {
             result.add(element)
-        } else if (ClassParentsFinder.TypeVB.values()
-                .any { it.oldName == element.text } && element is KtNameReferenceExpression
+        } else if (parentNames
+                .any { it == element.text } && element is KtNameReferenceExpression
         ) {
             parentResult.add(element)
             position = allElement.size

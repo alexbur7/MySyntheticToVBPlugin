@@ -12,7 +12,6 @@ import com.alexbur.synthetic_plugin.utils.ClassParentsFinder
 import com.alexbur.synthetic_plugin.extensions.isKotlinSynthetic
 import com.alexbur.synthetic_plugin.utils.isNeedGeneric
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.idea.util.isMultiline
 import java.util.*
 
 class ViewBindingPropertyDelegate(
@@ -29,9 +28,22 @@ class ViewBindingPropertyDelegate(
     }
 
     private val bindingClassName = run {
-        val synthImport = file.importDirectives.first { it.importPath?.pathStr.isKotlinSynthetic() }
+        val synthImport = file.importDirectives.filter { it.importPath?.pathStr.isKotlinSynthetic() }
+            .first { it.importPath?.pathStr?.contains("base")?.not() ?: false }
         val synthImportStr = synthImport.importPath?.pathStr.orEmpty()
             .removeSuffix(".*").removeSuffix(".view")
+        synthImportStr
+            .drop(synthImportStr.lastIndexOf('.') + 1)
+            .toCamelCase()
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            .plus("Binding")
+    }
+
+    private val errorBinding = run {
+        val synthImport = file.importDirectives.filter { it.importPath?.pathStr.isKotlinSynthetic() }
+            .mapNotNull { it.importPath?.pathStr }.first { it.contains("error") }
+        if (synthImport.isEmpty()) return@run null
+        val synthImportStr = synthImport.removeSuffix(".*").removeSuffix(".view")
         synthImportStr
             .drop(synthImportStr.lastIndexOf('.') + 1)
             .toCamelCase()
@@ -54,22 +66,19 @@ class ViewBindingPropertyDelegate(
         }
         classes.forEach { (psiClass, ktClass) ->
             val parents = ClassParentsFinder(psiClass)
-            val typeParentClass = parents.typeVb
+            addImports("${FRAGMENT_VB_GROUP_IMPORT}.${parents.newParentFragment}")
+            deleteImport("$FRAGMENT_GROUP_IMPORT.${parents.oldParentFragment}")
 
-            addImports("${FRAGMENT_VB_GROUP_IMPORT}.${typeParentClass?.newName}")
-            deleteImport("$FRAGMENT_GROUP_IMPORT.${typeParentClass?.oldName}")
-
-            if (typeParentClass.isNeedGeneric()) {
+            if (parents.newParentFragment.isNeedGeneric()) {
                 when {
                     parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
                     else -> println("Can't add ViewBinding property to class: ${psiClass.qualifiedName}")
                 }
                 addImports(bindingQualifiedClassName)
-                parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${typeParentClass?.newName}<"))
+                parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${parents.newParentFragment}<"))
                     ?.add(psiFactory.creareDelegatedSuperTypeEntry("${bindingClassName}>"))
-            }
-            else{
-                parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${typeParentClass?.newName}"))
+            } else {
+                parentClass?.replace(psiFactory.creareDelegatedSuperTypeEntry("${parents.newParentFragment}"))
             }
         }
     }
@@ -85,7 +94,29 @@ class ViewBindingPropertyDelegate(
         // It would be nice to place generated property after companion objects inside Fragments
         // and Views (if we have one). Also we should add [newLine] before generated property declaration.
         body.addAfter(viewBindingDeclaration, body.lBrace)
-        addImports(VIEW_GROUP_IMPORT, LAYOUT_INFLATER_GROUP_IMPORT)
+        body.addAfter(psiFactory.createNewLine(), body.lBrace)
+        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
+            addImports(VIEW_GROUP_IMPORT)
+        } else if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
+            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
+        }
+        val binding = errorBinding ?: return
+        addImports("com.nlmk.mcs.databinding.${binding}")
+        val createErrorBindingText = "override fun createErrorView(\n" +
+                "        inflater: LayoutInflater,\n" +
+                "        container: ViewGroup?,\n" +
+                "        isAttach: Boolean\n" +
+                "    ): View? {\n" +
+                "        errorBinding = $binding.inflate(inflater, container, isAttach)\n" +
+                "        return errorBinding?.root\n" +
+                "    }"
+        val errorBindingMethod = psiFactory.createFunction(createErrorBindingText)
+        body.addAfter(errorBindingMethod, body.lBrace)
+        body.addAfter(psiFactory.createNewLine(), body.lBrace)
+        val errorText = "private var errorBinding: $binding? = null"
+        val errorBindingProperty = psiFactory.createProperty(errorText)
+        body.addAfter(errorBindingProperty, body.lBrace)
+        body.addAfter(psiFactory.createNewLine(), body.lBrace)
     }
 
     private fun addImports(vararg imports: String) {
@@ -99,7 +130,7 @@ class ViewBindingPropertyDelegate(
         }
     }
 
-    private fun deleteImport(vararg imports: String){
+    private fun deleteImport(vararg imports: String) {
         file.importList?.let { importList ->
             imports.forEach { import ->
                 val importPath = ImportPath.fromString(import)

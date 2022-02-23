@@ -40,7 +40,7 @@ sealed class AndroidViewContainer {
                 idCamelCase
             }
             "errorTextView" -> {
-                "errorBinding.$idCamelCase"
+                "errorBinding?.$idCamelCase"
             }
             else -> "contentBinding.$idCamelCase"
         }
