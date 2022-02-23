@@ -11,6 +11,7 @@ import com.alexbur.synthetic_plugin.visitor.DotAfterRootViewVisitor
 import com.alexbur.synthetic_plugin.visitor.RootViewVisitor
 import com.alexbur.synthetic_plugin.visitor.SyntheticsImportsVisitor
 import com.intellij.psi.PsiElement
+import com.intellij.psi.codeStyle.CodeStyleManager
 
 object ConvertKtFileDelegate {
 
@@ -35,6 +36,7 @@ object ConvertKtFileDelegate {
 
         val bindingPropertyDelegate = ViewBindingPropertyDelegate(psiFactory, file)
         bindingPropertyDelegate.addViewBindingProperty(parents)
+        CodeStyleManager.getInstance(project).reformat(file)
         replaceSynthCallsToViews(psiFactory, xmlViewRefs)
         removeKotlinxSyntheticsImports(syntheticImports)
         removeRootView(rootViewRefs)
