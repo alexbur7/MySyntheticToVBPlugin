@@ -28,9 +28,16 @@ class ViewBindingPropertyDelegate(
     }
 
     private val bindingClassName = run {
-        val synthImport = file.importDirectives.filter { it.importPath?.pathStr.isKotlinSynthetic() }
-            .first { it.importPath?.pathStr?.contains("base")?.not() ?: false }
-        val synthImportStr = synthImport.importPath?.pathStr.orEmpty()
+        val synthImport = file.importDirectives.filter {
+            it.importPath?.pathStr.isKotlinSynthetic()
+        }.mapNotNull {
+            it.importPath?.pathStr
+        }
+        if (synthImport.isEmpty()) return@run null
+        val synthImport1 = synthImport.first {
+            it.contains("base").not()
+        }
+        val synthImportStr = synthImport1
             .removeSuffix(".*").removeSuffix(".view")
         synthImportStr
             .drop(synthImportStr.lastIndexOf('.') + 1)
@@ -40,10 +47,14 @@ class ViewBindingPropertyDelegate(
     }
 
     private val errorBinding = run {
-        val synthImport = file.importDirectives.filter { it.importPath?.pathStr.isKotlinSynthetic() }
-            .mapNotNull { it.importPath?.pathStr }.first { it.contains("error") }
+        val synthImport = file.importDirectives.filter {
+            it.importPath?.pathStr.isKotlinSynthetic()
+        }
         if (synthImport.isEmpty()) return@run null
-        val synthImportStr = synthImport.removeSuffix(".*").removeSuffix(".view")
+        val synthImport1 = synthImport
+            .mapNotNull { it.importPath?.pathStr }.firstOrNull { it.contains("_error_") }
+        if (synthImport1 == null || synthImport1.isEmpty()) return@run null
+        val synthImportStr = synthImport1.removeSuffix(".*").removeSuffix(".view")
         synthImportStr
             .drop(synthImportStr.lastIndexOf('.') + 1)
             .toCamelCase()
@@ -69,6 +80,7 @@ class ViewBindingPropertyDelegate(
             addImports("${FRAGMENT_VB_GROUP_IMPORT}.${parents.newParentFragment}")
             deleteImport("$FRAGMENT_GROUP_IMPORT.${parents.oldParentFragment}")
 
+            createErrorBinding(ktClass)
             if (parents.newParentFragment.isNeedGeneric()) {
                 when {
                     parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
@@ -83,23 +95,8 @@ class ViewBindingPropertyDelegate(
         }
     }
 
-    //для создания биндинга объекта
-    private fun processFragment(ktClass: KtClass) {
-        val text =
-            "override val contentBindingInflate: ((LayoutInflater, ViewGroup?, Boolean) -> $bindingClassName)\n" +
-                    "        get() = $bindingClassName::inflate"
-        val viewBindingDeclaration = psiFactory.createProperty(text)
+    private fun createErrorBinding(ktClass: KtClass){
         val body = ktClass.getOrCreateBody()
-
-        // It would be nice to place generated property after companion objects inside Fragments
-        // and Views (if we have one). Also we should add [newLine] before generated property declaration.
-        body.addAfter(viewBindingDeclaration, body.lBrace)
-        body.addAfter(psiFactory.createNewLine(), body.lBrace)
-        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
-            addImports(VIEW_GROUP_IMPORT)
-        } else if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
-            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
-        }
         val binding = errorBinding ?: return
         addImports("com.nlmk.mcs.databinding.${binding}")
         val createErrorBindingText = "override fun createErrorView(\n" +
@@ -117,6 +114,25 @@ class ViewBindingPropertyDelegate(
         val errorBindingProperty = psiFactory.createProperty(errorText)
         body.addAfter(errorBindingProperty, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
+    }
+    //для создания биндинга объекта
+    private fun processFragment(ktClass: KtClass) {
+        val text =
+            "override val contentBindingInflate: ((LayoutInflater, ViewGroup?, Boolean) -> $bindingClassName)\n" +
+                    "        get() = $bindingClassName::inflate"
+        val viewBindingDeclaration = psiFactory.createProperty(text)
+        val body = ktClass.getOrCreateBody()
+
+        // It would be nice to place generated property after companion objects inside Fragments
+        // and Views (if we have one). Also we should add [newLine] before generated property declaration.
+        body.addAfter(viewBindingDeclaration, body.lBrace)
+        body.addAfter(psiFactory.createNewLine(), body.lBrace)
+        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
+            addImports(VIEW_GROUP_IMPORT)
+        } else if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
+            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
+        }
+
     }
 
     private fun addImports(vararg imports: String) {

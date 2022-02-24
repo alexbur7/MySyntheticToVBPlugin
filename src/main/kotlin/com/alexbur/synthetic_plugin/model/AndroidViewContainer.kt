@@ -39,7 +39,7 @@ sealed class AndroidViewContainer {
             "progressBar", "errorContainer", "contentContainer", "recyclerView" -> {
                 idCamelCase
             }
-            "errorTextView" -> {
+            "errorTextView", "zniErrorTextView" -> {
                 "errorBinding?.$idCamelCase"
             }
             else -> "contentBinding.$idCamelCase"
