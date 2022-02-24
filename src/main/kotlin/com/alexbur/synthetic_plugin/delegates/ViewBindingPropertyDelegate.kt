@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.psi.getOrCreateBody
 import org.jetbrains.kotlin.resolve.ImportPath
 import com.alexbur.synthetic_plugin.utils.ClassParentsFinder
 import com.alexbur.synthetic_plugin.extensions.isKotlinSynthetic
+import com.alexbur.synthetic_plugin.model.TypeInitVbRef
 import com.alexbur.synthetic_plugin.utils.isNeedGeneric
 import com.intellij.psi.PsiElement
 import java.util.*
@@ -34,9 +35,10 @@ class ViewBindingPropertyDelegate(
             it.importPath?.pathStr
         }
         if (synthImport.isEmpty()) return@run null
-        val synthImport1 = synthImport.first {
+        val synthImport1 = synthImport.firstOrNull {
             it.contains("base").not()
         }
+        if (synthImport1.isNullOrEmpty()) return@run null
         val synthImportStr = synthImport1
             .removeSuffix(".*").removeSuffix(".view")
         synthImportStr
@@ -53,7 +55,7 @@ class ViewBindingPropertyDelegate(
         if (synthImport.isEmpty()) return@run null
         val synthImport1 = synthImport
             .mapNotNull { it.importPath?.pathStr }.firstOrNull { it.contains("_error_") }
-        if (synthImport1 == null || synthImport1.isEmpty()) return@run null
+        if (synthImport1.isNullOrEmpty()) return@run null
         val synthImportStr = synthImport1.removeSuffix(".*").removeSuffix(".view")
         synthImportStr
             .drop(synthImportStr.lastIndexOf('.') + 1)
@@ -66,7 +68,7 @@ class ViewBindingPropertyDelegate(
         "com.nlmk.mcs.databinding.${bindingClassName}"
     }
 
-    fun addViewBindingProperty(parentClass: PsiElement?) {
+    fun addViewBindingProperty(parentClass: PsiElement?, typeInitVBResult: List<TypeInitVbRef>) {
         val classes = (file.classes as Array<PsiClass>).mapNotNull { psiClass ->
             val ktClass = ((psiClass as? KtLightElement<*, *>)?.kotlinOrigin as? KtClass)
             if (ktClass == null) {
@@ -80,7 +82,7 @@ class ViewBindingPropertyDelegate(
             addImports("${FRAGMENT_VB_GROUP_IMPORT}.${parents.newParentFragment}")
             deleteImport("$FRAGMENT_GROUP_IMPORT.${parents.oldParentFragment}")
 
-            createErrorBinding(ktClass)
+            createErrorBinding(ktClass, typeInitVBResult)
             if (parents.newParentFragment.isNeedGeneric()) {
                 when {
                     parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
@@ -95,7 +97,7 @@ class ViewBindingPropertyDelegate(
         }
     }
 
-    private fun createErrorBinding(ktClass: KtClass){
+    private fun createErrorBinding(ktClass: KtClass, typeInitVBResult: List<TypeInitVbRef>){
         val body = ktClass.getOrCreateBody()
         val binding = errorBinding ?: return
         addImports("com.nlmk.mcs.databinding.${binding}")
@@ -114,6 +116,34 @@ class ViewBindingPropertyDelegate(
         val errorBindingProperty = psiFactory.createProperty(errorText)
         body.addAfter(errorBindingProperty, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
+        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
+            addImports(VIEW_GROUP_IMPORT)
+        }
+        if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
+            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
+        }
+        if (typeInitVBResult.isEmpty()) return
+        typeInitVBResult.forEach { typeInitVbRef ->
+            val initBinding = typeInitVbRef.layoutId?.toCamelCase()
+                ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                .plus("Binding")
+            addImports("com.nlmk.mcs.databinding.${initBinding}")
+            val initBindingText = "override fun ${typeInitVbRef.typeInitVB.nameFunction}(\n" +
+                    "        inflater: LayoutInflater,\n" +
+                    "        container: ViewGroup?,\n" +
+                    "        isAttach: Boolean\n" +
+                    "    ): View? {\n" +
+                    "        ${typeInitVbRef.typeInitVB.nameProperty} = $initBinding.inflate(inflater, container, isAttach)\n" +
+                    "        return ${typeInitVbRef.typeInitVB.nameProperty}?.root\n" +
+                    "    }"
+            val initMethod = psiFactory.createFunction(initBindingText)
+            body.addAfter(initMethod, body.lBrace)
+            body.addAfter(psiFactory.createNewLine(), body.lBrace)
+            val initTextBinding = "private var ${typeInitVbRef.typeInitVB.nameProperty}: $initBinding? = null"
+            val initTextProperty = psiFactory.createProperty(initTextBinding)
+            body.addAfter(initTextProperty, body.lBrace)
+            body.addAfter(psiFactory.createNewLine(), body.lBrace)
+        }
     }
     //для создания биндинга объекта
     private fun processFragment(ktClass: KtClass) {
@@ -127,12 +157,6 @@ class ViewBindingPropertyDelegate(
         // and Views (if we have one). Also we should add [newLine] before generated property declaration.
         body.addAfter(viewBindingDeclaration, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
-        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
-            addImports(VIEW_GROUP_IMPORT)
-        } else if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
-            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
-        }
-
     }
 
     private fun addImports(vararg imports: String) {
