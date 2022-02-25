@@ -3,16 +3,13 @@ package com.alexbur.synthetic_plugin.delegates
 import android.databinding.tool.ext.toCamelCase
 import com.intellij.psi.PsiClass
 import org.jetbrains.kotlin.asJava.elements.KtLightElement
-import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.kotlin.psi.getOrCreateBody
 import org.jetbrains.kotlin.resolve.ImportPath
 import com.alexbur.synthetic_plugin.utils.ClassParentsFinder
 import com.alexbur.synthetic_plugin.extensions.isKotlinSynthetic
 import com.alexbur.synthetic_plugin.model.TypeInitVbRef
 import com.alexbur.synthetic_plugin.utils.isNeedGeneric
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.psi.*
 import java.util.*
 
 class ViewBindingPropertyDelegate(
@@ -82,7 +79,8 @@ class ViewBindingPropertyDelegate(
             addImports("${FRAGMENT_VB_GROUP_IMPORT}.${parents.newParentFragment}")
             deleteImport("$FRAGMENT_GROUP_IMPORT.${parents.oldParentFragment}")
 
-            createErrorBinding(ktClass, typeInitVBResult)
+            createErrorBinding(ktClass)
+            setAdditionalBindings(typeInitVBResult, ktClass)
             if (parents.newParentFragment.isNeedGeneric()) {
                 when {
                     parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
@@ -97,9 +95,9 @@ class ViewBindingPropertyDelegate(
         }
     }
 
-    private fun createErrorBinding(ktClass: KtClass, typeInitVBResult: List<TypeInitVbRef>){
-        val body = ktClass.getOrCreateBody()
+    private fun createErrorBinding(ktClass: KtClass) {
         val binding = errorBinding ?: return
+        val body = ktClass.getOrCreateBody()
         addImports("com.nlmk.mcs.databinding.${binding}")
         val createErrorBindingText = "override fun createErrorView(\n" +
                 "        inflater: LayoutInflater,\n" +
@@ -116,13 +114,15 @@ class ViewBindingPropertyDelegate(
         val errorBindingProperty = psiFactory.createProperty(errorText)
         body.addAfter(errorBindingProperty, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
-        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
-            addImports(VIEW_GROUP_IMPORT)
-        }
-        if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
-            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
-        }
+        setViewGroupImport()
+    }
+
+    private fun setAdditionalBindings(
+        typeInitVBResult: List<TypeInitVbRef>,
+        ktClass: KtClass
+    ) {
         if (typeInitVBResult.isEmpty()) return
+        val body = ktClass.getOrCreateBody()
         typeInitVBResult.forEach { typeInitVbRef ->
             val initBinding = typeInitVbRef.layoutId?.toCamelCase()
                 ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
@@ -144,7 +144,18 @@ class ViewBindingPropertyDelegate(
             body.addAfter(initTextProperty, body.lBrace)
             body.addAfter(psiFactory.createNewLine(), body.lBrace)
         }
+        setViewGroupImport()
     }
+
+    private fun setViewGroupImport() {
+        if (file.importDirectives.find { it.importPath?.pathStr == VIEW_GROUP_IMPORT } == null) {
+            addImports(VIEW_GROUP_IMPORT)
+        }
+        if (file.importDirectives.find { it.importPath?.pathStr == LAYOUT_INFLATER_GROUP_IMPORT } == null) {
+            addImports(LAYOUT_INFLATER_GROUP_IMPORT)
+        }
+    }
+
     //для создания биндинга объекта
     private fun processFragment(ktClass: KtClass) {
         val text =
@@ -152,6 +163,7 @@ class ViewBindingPropertyDelegate(
                     "        get() = $bindingClassName::inflate"
         val viewBindingDeclaration = psiFactory.createProperty(text)
         val body = ktClass.getOrCreateBody()
+        setViewGroupImport()
 
         // It would be nice to place generated property after companion objects inside Fragments
         // and Views (if we have one). Also we should add [newLine] before generated property declaration.
