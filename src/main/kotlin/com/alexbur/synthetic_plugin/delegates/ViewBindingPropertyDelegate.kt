@@ -64,8 +64,13 @@ class ViewBindingPropertyDelegate(
     private val bindingQualifiedClassName = run {
         "com.nlmk.mcs.databinding.${bindingClassName}"
     }
+    private val cleanBindingText = mutableListOf<String>()
 
-    fun addViewBindingProperty(parentClass: PsiElement?, typeInitVBResult: List<TypeInitVbRef>) {
+    fun addViewBindingProperty(
+        parentClass: PsiElement?,
+        typeInitVBResult: List<TypeInitVbRef>,
+        onDestroyViewPsiElement: PsiElement?
+    ) {
         val classes = (file.classes as Array<PsiClass>).mapNotNull { psiClass ->
             val ktClass = ((psiClass as? KtLightElement<*, *>)?.kotlinOrigin as? KtClass)
             if (ktClass == null) {
@@ -81,6 +86,7 @@ class ViewBindingPropertyDelegate(
 
             createErrorBinding(ktClass)
             setAdditionalBindings(typeInitVBResult, ktClass)
+            clearBindingsInDestroyView(onDestroyViewPsiElement, ktClass)
             if (parents.newParentFragment.isNeedGeneric()) {
                 when {
                     parents.isChildOf(ANDROID_FRAGMENT_CLASS) -> processFragment(ktClass)
@@ -115,6 +121,7 @@ class ViewBindingPropertyDelegate(
         body.addAfter(errorBindingProperty, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
         setViewGroupImport()
+        cleanBindingText.add("errorBinding = null")
     }
 
     private fun setAdditionalBindings(
@@ -143,8 +150,33 @@ class ViewBindingPropertyDelegate(
             val initTextProperty = psiFactory.createProperty(initTextBinding)
             body.addAfter(initTextProperty, body.lBrace)
             body.addAfter(psiFactory.createNewLine(), body.lBrace)
+            cleanBindingText.add("${typeInitVbRef.typeInitVB.nameProperty} = null")
         }
         setViewGroupImport()
+    }
+
+    private fun clearBindingsInDestroyView(
+        onDestroyViewPsiElement: PsiElement?,
+        ktClass: KtClass
+    ) {
+        if (cleanBindingText.isEmpty()) return
+        val body = ktClass.getOrCreateBody()
+        if (onDestroyViewPsiElement == null) {
+            val functionText = "override fun onDestroyView() {\n" +
+                    "super.onDestroyView()\n" +
+                    cleanBindingText.joinToString("\n") +
+                    "}"
+            body.addAfter(
+                psiFactory.createFunction(functionText),
+                body.lBrace
+            )
+        } else {
+            //onDestroyViewPsiElement.replace(psiFactory.createArgument("onDestroyView()"))
+            onDestroyViewPsiElement.add(psiFactory.createNewLine())
+            cleanBindingText.forEach { text ->
+                onDestroyViewPsiElement.add(psiFactory.createArgument(text)).add(psiFactory.createNewLine())
+            }
+        }
     }
 
     private fun setViewGroupImport() {

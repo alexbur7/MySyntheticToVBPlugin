@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
 class DotAfterRootViewVisitor : PsiRecursiveElementWalkingVisitor() {
 
+    var onDestroyViewPsiElement: PsiElement? = null
     private val parentResult = mutableListOf<PsiElement>()
     private val result = mutableListOf<PsiElement>()
     private val allElement = mutableListOf<PsiElement>()
@@ -44,6 +45,9 @@ class DotAfterRootViewVisitor : PsiRecursiveElementWalkingVisitor() {
                 }) {
                 position = allElement.size
                 typeInitVBResult.add(TypeInitVbRef(TypeInitVB.elementTextToType(element.text)))
+            }
+            if (element.text == "onDestroyView") {
+                onDestroyViewPsiElement = element
             }
         }
         if (element.text == "." && allElement.lastOrNull()?.text == "rootView") {

@@ -36,7 +36,11 @@ object ConvertKtFileDelegate {
         val typeInitVBResult = dotAfterRootViewVisitor.getTypeInitVBResults()
 
         val bindingPropertyDelegate = ViewBindingPropertyDelegate(psiFactory, file)
-        bindingPropertyDelegate.addViewBindingProperty(parents, typeInitVBResult)
+        bindingPropertyDelegate.addViewBindingProperty(
+            parents,
+            typeInitVBResult,
+            dotAfterRootViewVisitor.onDestroyViewPsiElement
+        )
         CodeStyleManager.getInstance(project).reformat(file)
         replaceSynthCallsToViews(psiFactory, xmlViewRefs)
         removeKotlinxSyntheticsImports(syntheticImports)
