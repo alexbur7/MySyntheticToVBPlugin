@@ -8,7 +8,6 @@ import com.alexbur.synthetic_plugin.model.AndroidViewContainer
 import com.alexbur.synthetic_plugin.model.RootViewRef
 import com.alexbur.synthetic_plugin.visitor.AndroidViewXmlSyntheticsRefsVisitor
 import com.alexbur.synthetic_plugin.visitor.DotAfterRootViewVisitor
-import com.alexbur.synthetic_plugin.visitor.RootViewVisitor
 import com.alexbur.synthetic_plugin.visitor.SyntheticsImportsVisitor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.codeStyle.CodeStyleManager
@@ -22,15 +21,12 @@ object ConvertKtFileDelegate {
     ) {
         val xmlRefsVisitor = AndroidViewXmlSyntheticsRefsVisitor()
         val importsVisitor = SyntheticsImportsVisitor()
-        val rootViewVisitor = RootViewVisitor()
         val dotAfterRootViewVisitor = DotAfterRootViewVisitor()
         file.accept(xmlRefsVisitor)
         file.accept(importsVisitor)
-        file.accept(rootViewVisitor)
         file.accept(dotAfterRootViewVisitor)
         val xmlViewRefs = xmlRefsVisitor.getResult()
         val syntheticImports = importsVisitor.getResult()
-        val rootViewRefs = rootViewVisitor.getResult()
         val dots = dotAfterRootViewVisitor.getResult()
         val parents = dotAfterRootViewVisitor.getParentResult()
         val typeInitVBResult = dotAfterRootViewVisitor.getTypeInitVBResults()
@@ -44,7 +40,6 @@ object ConvertKtFileDelegate {
         CodeStyleManager.getInstance(project).reformat(file)
         replaceSynthCallsToViews(psiFactory, xmlViewRefs)
         removeKotlinxSyntheticsImports(syntheticImports)
-        removeRootView(rootViewRefs)
         removeDot(dots)
 
         println("Converted synthetics to view binding for ${file.name} successfully")
