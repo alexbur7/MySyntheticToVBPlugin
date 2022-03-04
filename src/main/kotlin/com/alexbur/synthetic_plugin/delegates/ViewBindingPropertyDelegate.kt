@@ -110,18 +110,23 @@ class ViewBindingPropertyDelegate(
                 "        container: ViewGroup?,\n" +
                 "        isAttach: Boolean\n" +
                 "    ): View? {\n" +
-                "        errorBinding = $binding.inflate(inflater, container, isAttach)\n" +
-                "        return errorBinding?.root\n" +
+                "        _errorBinding = $binding.inflate(inflater, container, isAttach)\n" +
+                "        return _errorBinding?.root\n" +
                 "    }"
         val errorBindingMethod = psiFactory.createFunction(createErrorBindingText)
         body.addAfter(errorBindingMethod, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
-        val errorText = "private var errorBinding: $binding? = null"
+        val notNullErrorBindingText = "private val errorBinding: $binding\n" +
+                "get() = checkNotNull(_errorBinding)"
+        val notNullErrorBindingProperty = psiFactory.createProperty(notNullErrorBindingText)
+        body.addAfter(notNullErrorBindingProperty, body.lBrace)
+        body.addAfter(psiFactory.createNewLine(), body.lBrace)
+        val errorText = "private var _errorBinding: $binding? = null"
         val errorBindingProperty = psiFactory.createProperty(errorText)
         body.addAfter(errorBindingProperty, body.lBrace)
         body.addAfter(psiFactory.createNewLine(), body.lBrace)
         setViewGroupImport()
-        cleanBindingText.add("errorBinding = null")
+        cleanBindingText.add("_errorBinding = null")
     }
 
     private fun setAdditionalBindings(
@@ -140,17 +145,22 @@ class ViewBindingPropertyDelegate(
                     "        container: ViewGroup?,\n" +
                     "        isAttach: Boolean\n" +
                     "    ): View? {\n" +
-                    "        ${typeInitVbRef.typeInitVB.nameProperty} = $initBinding.inflate(inflater, container, isAttach)\n" +
-                    "        return ${typeInitVbRef.typeInitVB.nameProperty}?.root\n" +
+                    "        _${typeInitVbRef.typeInitVB.nameProperty} = $initBinding.inflate(inflater, container, isAttach)\n" +
+                    "        return _${typeInitVbRef.typeInitVB.nameProperty}?.root\n" +
                     "    }"
             val initMethod = psiFactory.createFunction(initBindingText)
             body.addAfter(initMethod, body.lBrace)
             body.addAfter(psiFactory.createNewLine(), body.lBrace)
-            val initTextBinding = "private var ${typeInitVbRef.typeInitVB.nameProperty}: $initBinding? = null"
+            val notNullInitTextBinding = "private val ${typeInitVbRef.typeInitVB.nameProperty}: $initBinding\n" +
+                    "get() = checkNotNull(_${typeInitVbRef.typeInitVB.nameProperty})"
+            val notNullInitTextProperty = psiFactory.createProperty(notNullInitTextBinding)
+            body.addAfter(notNullInitTextProperty, body.lBrace)
+            body.addAfter(psiFactory.createNewLine(), body.lBrace)
+            val initTextBinding = "private var _${typeInitVbRef.typeInitVB.nameProperty}: $initBinding? = null"
             val initTextProperty = psiFactory.createProperty(initTextBinding)
             body.addAfter(initTextProperty, body.lBrace)
             body.addAfter(psiFactory.createNewLine(), body.lBrace)
-            cleanBindingText.add("${typeInitVbRef.typeInitVB.nameProperty} = null")
+            cleanBindingText.add("_${typeInitVbRef.typeInitVB.nameProperty} = null")
         }
         setViewGroupImport()
     }

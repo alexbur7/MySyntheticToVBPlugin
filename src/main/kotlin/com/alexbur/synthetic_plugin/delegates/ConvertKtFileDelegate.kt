@@ -5,7 +5,6 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import com.alexbur.synthetic_plugin.model.AndroidViewContainer
-import com.alexbur.synthetic_plugin.model.RootViewRef
 import com.alexbur.synthetic_plugin.visitor.AndroidViewXmlSyntheticsRefsVisitor
 import com.alexbur.synthetic_plugin.visitor.DotAfterRootViewVisitor
 import com.alexbur.synthetic_plugin.visitor.SyntheticsImportsVisitor
@@ -63,12 +62,6 @@ object ConvertKtFileDelegate {
     private fun removeKotlinxSyntheticsImports(syntheticImports: List<KtImportDirective>) {
         syntheticImports.forEach { import ->
             import.delete()
-        }
-    }
-
-    private fun removeRootView(rootViews: List<RootViewRef>) {
-        rootViews.forEach {
-            it.ref?.delete()
         }
     }
 
