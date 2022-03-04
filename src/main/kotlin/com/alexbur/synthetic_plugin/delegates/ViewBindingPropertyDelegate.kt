@@ -173,8 +173,9 @@ class ViewBindingPropertyDelegate(
         val body = ktClass.getOrCreateBody()
         if (onDestroyViewPsiElement == null) {
             val functionText = "override fun onDestroyView() {\n" +
-                    "super.onDestroyView()\n" +
                     cleanBindingText.joinToString("\n") +
+                    "\n"+
+                    "super.onDestroyView()\n" +
                     "}"
             body.addAfter(
                 psiFactory.createFunction(functionText),
