@@ -29,6 +29,7 @@ object ConvertKtFileDelegate {
         val dots = dotAfterRootViewVisitor.getResult()
         val parents = dotAfterRootViewVisitor.getParentResult()
         val typeInitVBResult = dotAfterRootViewVisitor.getTypeInitVBResults()
+        val applyWithList = dotAfterRootViewVisitor.getApplyReplaceWithResults()
 
         val bindingPropertyDelegate = ViewBindingPropertyDelegate(psiFactory, file)
         bindingPropertyDelegate.addViewBindingProperty(
@@ -40,6 +41,7 @@ object ConvertKtFileDelegate {
         replaceSynthCallsToViews(psiFactory, xmlViewRefs)
         removeKotlinxSyntheticsImports(syntheticImports)
         removeDot(dots)
+        replaceApplyToWith(applyWithList, psiFactory)
 
         println("Converted synthetics to view binding for ${file.name} successfully")
     }
@@ -68,6 +70,12 @@ object ConvertKtFileDelegate {
     private fun removeDot(list: List<PsiElement>) {
         list.forEach {
             it.delete()
+        }
+    }
+
+    private fun replaceApplyToWith(list: List<PsiElement>, psiFactory: KtPsiFactory) {
+        list.forEach {
+            it.replace(psiFactory.createArgument("with(contentBinding)"))
         }
     }
 }

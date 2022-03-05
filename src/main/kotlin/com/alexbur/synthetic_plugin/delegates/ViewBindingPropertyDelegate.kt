@@ -182,7 +182,6 @@ class ViewBindingPropertyDelegate(
                 body.lBrace
             )
         } else {
-            //onDestroyViewPsiElement.replace(psiFactory.createArgument("onDestroyView()"))
             onDestroyViewPsiElement.add(psiFactory.createNewLine())
             cleanBindingText.forEach { text ->
                 onDestroyViewPsiElement.add(psiFactory.createArgument(text)).add(psiFactory.createNewLine())
