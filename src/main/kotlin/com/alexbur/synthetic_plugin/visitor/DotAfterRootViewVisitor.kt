@@ -55,24 +55,23 @@ class DotAfterRootViewVisitor : PsiRecursiveElementWalkingVisitor() {
                 onDestroyViewPsiElement = element
             }
         }
-        if (element.text == "activeLabelsAdapter") {
-            println("tut")
-        }
         if (element.text == "." && allElement.lastOrNull()?.text == "rootView") {
             result.add(element)
             result.add(allElement.last { it is KtNameReferenceExpression })
             positionRootView = allElement.size
         } else if (parentNames.any { it == element.text } && element is KtNameReferenceExpression) {
             parentResult.add(element)
+        } else if (element.text == "getLayoutId" || element.text == "getErrorLayoutId") {
+            val context = element.context
+            if (context != null) {
+                result.add(context)
+            }
         } else {
             if (result.lastOrNull()?.text == "rootView" && allElement.size - positionRootView < 4
                 && element.text == "apply" && element is KtNameReferenceExpression
             ) {
-                //result.add(element)
                 applyReplaceWithList.add(element)
-            } /*else if (result.lastOrNull()?.text == "apply" && element.text == "{") {
-                result.add(element)
-            }*/
+            }
             allElement.add(element)
         }
         if (isAdditionalBinding) {
